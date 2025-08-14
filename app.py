@@ -38,9 +38,10 @@ conn.commit()
 # LangChain LLM setup
 # ---------------------------
 chat = ChatOpenAI(
-    base_url="https://openrouter.ai/api/v1",
+    base_url="https://openrouter.ai/api/v1",   # OpenRouter endpoint
     api_key=api_key,
-    model="gpt-4o-mini"
+    model="gpt-3.5-turbo",                     # Change model if needed
+    temperature=0.7
 )
 
 PROMPT_TEMPLATE = """

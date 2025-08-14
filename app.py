@@ -8,7 +8,7 @@ from langchain.schema import HumanMessage
 # ---------------------------
 # Load API key from Streamlit secrets
 # ---------------------------
-api_key = st.secrets["general"]["OPENROUTER_API_KEY"]
+api_key = st.secrets.get("general", {}).get("OPENROUTER_API_KEY")
 if not api_key:
     st.error("❌ OPENROUTER_API_KEY not found in secrets.")
     st.stop()
@@ -35,13 +35,17 @@ CREATE TABLE IF NOT EXISTS entries (
 conn.commit()
 
 # ---------------------------
-# LangChain LLM setup
+# LangChain LLM setup for OpenRouter
 # ---------------------------
 chat = ChatOpenAI(
-    base_url="https://openrouter.ai/api/v1",   # OpenRouter endpoint
     api_key=api_key,
-    model="gpt-3.5-turbo",                     # Change model if needed
-    temperature=0.7
+    model="openai/gpt-3.5-turbo",  # ✅ OpenRouter model slug
+    temperature=0.7,
+    base_url="https://openrouter.ai/api/v1",
+    default_headers={
+        "HTTP-Referer": "http://localhost:8501",  # change if hosted
+        "X-Title": "Conscious Day Planner"
+    }
 )
 
 PROMPT_TEMPLATE = """
@@ -94,15 +98,14 @@ if menu == "🆕 New Entry":
                     priorities=priorities
                 )
 
-                # ✅ Correct way to call ChatOpenAI
-                response = chat([HumanMessage(content=prompt)])
+                try:
+                    response = chat([HumanMessage(content=prompt)])
+                    output_text = response.content if hasattr(response, "content") else str(response)
+                except Exception as e:
+                    st.error(f"⚠️ Error generating plan: {e}")
+                    st.stop()
 
-                # Get string output
-                output_text = response.content if hasattr(response, "content") else str(response)
-
-                # Split output
-                reflection_text = ""
-                strategy_text = ""
+                reflection_text, strategy_text = "", ""
                 if "Strategy:" in output_text:
                     parts = output_text.split("Strategy:")
                     reflection_text = parts[0].replace("Reflection:", "").strip()
@@ -110,7 +113,6 @@ if menu == "🆕 New Entry":
                 else:
                     reflection_text = output_text.strip()
 
-                # Save to database
                 date_str = datetime.now().strftime("%Y-%m-%d")
                 cursor.execute("""
                     INSERT INTO entries (date, journal, intention, dream, priorities, reflection, strategy)
@@ -118,7 +120,6 @@ if menu == "🆕 New Entry":
                 """, (date_str, journal, intention, dream, priorities, reflection_text, strategy_text))
                 conn.commit()
 
-                # Show results
                 st.subheader("🪞 Reflection")
                 st.write(reflection_text)
                 st.subheader("📅 Day Strategy")
@@ -130,11 +131,9 @@ if menu == "🆕 New Entry":
 elif menu == "📜 View Past Entries":
     st.title("📜 Past Entries")
 
-    # Search inputs
     search_date = st.date_input("Search by Date", value=None)
     search_text = st.text_input("Search by Keyword (Journal/Intention)")
 
-    # Build query
     query = "SELECT id, date, journal, intention, dream, priorities, reflection, strategy FROM entries WHERE 1=1"
     params = []
 
@@ -166,6 +165,4 @@ elif menu == "📜 View Past Entries":
                 cursor.execute("DELETE FROM entries WHERE id = ?", (row[0],))
                 conn.commit()
                 st.success(f"Entry {row[0]} deleted successfully!")
-                st.experimental_rerun()  # Refresh page to update list
-
-conn.close()
+                st.rerun()

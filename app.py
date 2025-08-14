@@ -2,7 +2,8 @@ import os
 import sqlite3
 from datetime import datetime
 import streamlit as st
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
+
 
 # ---------------------------
 # Load API key from Streamlit secrets

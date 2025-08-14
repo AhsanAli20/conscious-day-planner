@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime
 import streamlit as st
 from langchain_openai import ChatOpenAI
-
+from langchain.schema import HumanMessage
 
 # ---------------------------
 # Load API key from Streamlit secrets
@@ -38,8 +38,9 @@ conn.commit()
 # LangChain LLM setup
 # ---------------------------
 chat = ChatOpenAI(
-    openai_api_key=api_key,
-    model_name="gpt-3.5-turbo"
+    base_url="https://openrouter.ai/api/v1",
+    api_key=api_key,
+    model="gpt-4o-mini"
 )
 
 PROMPT_TEMPLATE = """
@@ -91,17 +92,22 @@ if menu == "🆕 New Entry":
                     dream=dream,
                     priorities=priorities
                 )
-                response = chat(prompt)  # Corrected: chat object used
+
+                # ✅ Correct way to call ChatOpenAI
+                response = chat([HumanMessage(content=prompt)])
+
+                # Get string output
+                output_text = response.content if hasattr(response, "content") else str(response)
 
                 # Split output
                 reflection_text = ""
                 strategy_text = ""
-                if "Strategy:" in response:
-                    parts = response.split("Strategy:")
+                if "Strategy:" in output_text:
+                    parts = output_text.split("Strategy:")
                     reflection_text = parts[0].replace("Reflection:", "").strip()
                     strategy_text = parts[1].strip()
                 else:
-                    reflection_text = response.strip()
+                    reflection_text = output_text.strip()
 
                 # Save to database
                 date_str = datetime.now().strftime("%Y-%m-%d")

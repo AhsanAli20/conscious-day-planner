@@ -2,20 +2,19 @@ import os
 import sqlite3
 from datetime import datetime
 import streamlit as st
-from dotenv import load_dotenv
 from langchain.chat_models import ChatOpenAI
 
-
-# Load environment variables
-
-load_dotenv()
-api_key =  st.secrets["general"]["OPENROUTER_API_KEY"]
+# ---------------------------
+# Load API key from Streamlit secrets
+# ---------------------------
+api_key = st.secrets["general"]["OPENROUTER_API_KEY"]
 if not api_key:
-    st.error("❌ OPENROUTER_API_KEY not found in .env file.")
+    st.error("❌ OPENROUTER_API_KEY not found in secrets.")
     st.stop()
 
+# ---------------------------
 # Database setup
-
+# ---------------------------
 DB_FILE = "entries.db"
 conn = sqlite3.connect(DB_FILE, check_same_thread=False)
 cursor = conn.cursor()
@@ -34,13 +33,12 @@ CREATE TABLE IF NOT EXISTS entries (
 """)
 conn.commit()
 
+# ---------------------------
 # LangChain LLM setup
-
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0.7,
+# ---------------------------
+chat = ChatOpenAI(
     openai_api_key=api_key,
-    base_url="https://openrouter.ai/api/v1"
+    model_name="gpt-3.5-turbo"
 )
 
 PROMPT_TEMPLATE = """
@@ -64,13 +62,15 @@ Strategy:
 (Write only the Suggested Day Strategy here in clear bullet points)
 """
 
+# ---------------------------
 # Sidebar Navigation
-
+# ---------------------------
 st.sidebar.title("📌 Menu")
 menu = st.sidebar.radio("Go to", ["🆕 New Entry", "📜 View Past Entries"])
 
+# ---------------------------
 # New Entry Page
-
+# ---------------------------
 if menu == "🆕 New Entry":
     st.title("🧠 Conscious Day Planner — New Entry")
 
@@ -90,7 +90,7 @@ if menu == "🆕 New Entry":
                     dream=dream,
                     priorities=priorities
                 )
-                response = llm.invoke(prompt).content
+                response = chat(prompt)  # Corrected: chat object used
 
                 # Split output
                 reflection_text = ""
@@ -116,8 +116,9 @@ if menu == "🆕 New Entry":
                 st.subheader("📅 Day Strategy")
                 st.write(strategy_text if strategy_text else "No separate strategy generated.")
 
+# ---------------------------
 # View Past Entries Page
-
+# ---------------------------
 elif menu == "📜 View Past Entries":
     st.title("📜 Past Entries")
 
@@ -160,4 +161,3 @@ elif menu == "📜 View Past Entries":
                 st.experimental_rerun()  # Refresh page to update list
 
 conn.close()
-

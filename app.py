@@ -9,7 +9,7 @@ from langchain.chat_models import ChatOpenAI
 # Load environment variables
 
 load_dotenv()
-api_key = os.getenv("OPENROUTER_API_KEY")
+api_key =  st.secrets["general"]["OPENROUTER_API_KEY"]
 if not api_key:
     st.error("❌ OPENROUTER_API_KEY not found in .env file.")
     st.stop()
